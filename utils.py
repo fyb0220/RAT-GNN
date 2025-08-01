@@ -47,7 +47,7 @@ class EarlyStopping:
         self.patience = patience
         self.verbose = verbose
         self.counter = 0
-        self.best_score = 0  # 假设更高的分数是更好的
+        self.best_score = 0  
         self.early_stop = False
 
     def step(self, val_acc, model, file):
@@ -83,19 +83,9 @@ def setup_seed(seed):
     torch.backends.cudnn.deterministic = True
 
 
-# --------------------- Load data ----------------------
 
 def load_npz(file_name):
-    """Load a SparseGraph from a Numpy binary file.
-    Parameters
-    ----------
-    file_name : str
-        Name of the file to load.
-    Returns
-    -------
-    sparse_graph : gust.SparseGraph
-        Graph in sparse matrix format.
-    """
+
     if not file_name.endswith('.npz'):
         file_name += '.npz'
     with np.aload('datasets/' + file_name) as loader:
@@ -114,16 +104,6 @@ def load_npz(file_name):
 
 
 def load_npz2(file_name):
-    """Load a SparseGraph from a Numpy binary file.
-    Parameters
-    ----------
-    file_name : str
-        Name of the file to load.
-    Returns
-    -------
-    sparse_graph : gust.SparseGraph
-        Graph in sparse matrix format.
-    """
     if not file_name.endswith('.npz'):
         file_name += '.npz'
     with np.aload('datasets/' + file_name) as loader:
@@ -173,9 +153,6 @@ def largest_connected_components(adj, n_components=1):
     print("Selecting {0} largest connected components".format(n_components))
     return nodes_to_keep
 
-
-# ------------------------ Normalize -----------------------
-# D^(-0.5) * A * D^(-0.5)
 
 def normalize(mx):
     """Row-normalize sparse matrix"""
@@ -229,8 +206,6 @@ def sparse_mx_to_torch_sparse_tensor(sparse_mx):
     return torch.sparse.FloatTensor(indices, values, shape)
 
 
-# --------------------------------- Sub-graph ------------------------
-
 def k_order_nei(adj, k, target):
     for i in range(k):
         if i == 0:
@@ -252,9 +227,6 @@ def sub_graph_tensor(two_order_nei, feat, adj, normadj, device):
     sub_nor_adj_tensor = sparse_mx_to_torch_sparse_tensor(sub_nor_adj).to(device)
 
     return sub_feat, sub_adj_tensor, sub_nor_adj_tensor
-
-
-# -------------------------------------- After Attack ----------------------------------
 
 def gen_new_adj_tensor(adj_tensor, edges, sub_graph_nodes, device):
     # sparse tensor
@@ -344,8 +316,6 @@ def gen_new_edge_idx(adj_edge_index, disc_score, masked_score_idx, device):
     return new_edge_idx
 
 
-# ----------------------------- ACC --------------------------
-
 
 def worst_case_class(logp, labels_np):
     logits_np = logp.cpu().numpy()
@@ -380,34 +350,3 @@ def train_val_test_split_tabular(arrays, train_size=0.1, val_size=0.1, test_size
                                           stratify=stratify)
 
     return idx_train, idx_val, idx_test
-
-
-# ------------------------------ Multi-targets ------------------------
-
-def obtain_multi_targets(dataset, tar_num, adj, seed=123):
-    deg = np.array(adj.sum(1)).squeeze()
-    deg_sort = deg.argsort()
-    tmp_idx = np.where(deg[deg_sort] >= tar_num)
-    idx = deg_sort[tmp_idx]  # idx contains nodes whose degree are larger than tar_num
-
-    candidate = np.arange(adj.shape[0])
-    real_targets_all = []
-    for i in idx:
-        one_order_nei = adj[i].nonzero()[1]
-        cand_one_order_nei = np.intersect1d(candidate, one_order_nei)
-        if len(cand_one_order_nei) >= tar_num:
-            real_targets = np.random.choice(cand_one_order_nei, tar_num, replace=False)
-            real_targets_all.append(real_targets)
-            candidate = np.setdiff1d(candidate, real_targets)
-    real_targets_arr = np.array(real_targets_all)
-
-    mask = np.arange(len(real_targets_arr))
-    train_mask, val_mask, test_mask = train_val_test_split_tabular(mask, train_size=0.64, val_size=0.16, test_size=0.2,
-                                                                   random_state=seed)
-    split = {}
-    split['train'] = train_mask
-    split['val'] = val_mask
-    split['test'] = test_mask
-    np.save('datasets/multargets_' + dataset + '_tarnum' + str(tar_num) + '.npy', real_targets_arr)
-    np.save('datasets/multargets_' + dataset + '_tarnum' + str(tar_num) + '_split.npy', split)
-    return
