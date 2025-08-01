@@ -176,8 +176,3 @@ if __name__ == '__main__':
     opts = args.__dict__.copy()
     print(opts)
     main(opts)
-
-
-'''
-nohup python -u surrogate_gcn.py --dataset 10k_ogbproducts --connect True --suffix lr1e-3 --lr 1e-3 --nepochs 10000 --gpu 0 --dropout 0 > log/surro_gcn_ogbproducts.log  2>&1 &
-'''
